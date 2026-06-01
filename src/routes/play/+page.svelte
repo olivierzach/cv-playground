@@ -174,12 +174,9 @@
             <option value={m as any}>{m.name}</option>
           {/each}
         </select>
-        <button class="primary" onclick={predictNow}>Predict</button>
-        <button onclick={sampleFromDataset}>Sample</button>
-        <button onclick={clear}>Clear</button>
       </div>
       <div style="margin-top:10px; color: var(--muted); font-size: 13px; line-height: 1.5;">
-        Draw a digit. On pointer-up, the model predicts instantly (in a Web Worker).
+        Draw a digit, then press <b>Predict</b>.
       </div>
       <hr />
       <div class="kv">
@@ -204,6 +201,11 @@
           onpointercancel={onUp}
           onpointerleave={onUp}
         ></canvas>
+      </div>
+      <div class="row" style="margin-top: 10px; justify-content:center;">
+        <button class="primary" onclick={predictNow}>Predict</button>
+        <button onclick={sampleFromDataset}>Sample</button>
+        <button onclick={clear}>Clear</button>
       </div>
       <div style="margin-top:10px; color: var(--muted); font-size: 12px;">
         Tip: draw big and centered; MNIST preprocessing will be improved in V2.

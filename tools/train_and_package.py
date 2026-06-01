@@ -233,6 +233,12 @@ def main():
         transforms.ToTensor(),
         transforms.Normalize((MNIST_MEAN,), (MNIST_STD,)),
     ])
+    tfm_aug = transforms.Compose([
+        transforms.RandomAffine(degrees=10, translate=(0.08, 0.08), scale=(0.9, 1.1)),
+        transforms.ToTensor(),
+        transforms.Normalize((MNIST_MEAN,), (MNIST_STD,)),
+    ])
+
     ds_train = datasets.MNIST(".data", train=True, download=True, transform=tfm)
     ds_test = datasets.MNIST(".data", train=False, download=True, transform=tfm)
 
@@ -241,11 +247,13 @@ def main():
     curated = Subset(ds_test, curated_idx)
 
     train_loader = DataLoader(ds_train, batch_size=128, shuffle=True, num_workers=0)
+    train_loader_aug = DataLoader(datasets.MNIST(".data", train=True, download=True, transform=tfm_aug), batch_size=128, shuffle=True, num_workers=0)
     val_loader = DataLoader(curated, batch_size=256, shuffle=False, num_workers=0)
 
     packs = [
         (PackSpec("mlp_h256", "MLP (h=256)"), MLP(hidden=256)),
         (PackSpec("cnn_small", "Small CNN (16/32)"), SmallCNN(16, 32)),
+        (PackSpec("cnn_good", "Good CNN (32/64, aug)"), SmallCNN(32, 64)),
     ]
 
     out_root = Path(args.out)
@@ -258,7 +266,11 @@ def main():
         print(f"\n=== {spec.model_id}: {spec.model_name} ===")
         model.to(device)
 
-        curves = train_one(model, train_loader, val_loader, device, args.epochs, args.lr)
+        # Use augmentation only for the "good" CNN variant.
+        loader = train_loader_aug if spec.model_id == 'cnn_good' else train_loader
+        # Slightly longer by default for cnn_good even if caller uses small epochs.
+        epochs = args.epochs if spec.model_id != 'cnn_good' else max(args.epochs, 5)
+        curves = train_one(model, loader, val_loader, device, epochs, args.lr)
         ev = eval_and_collect(model, val_loader, device)
 
         # metrics
