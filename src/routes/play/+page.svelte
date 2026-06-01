@@ -7,18 +7,18 @@
   import { downsampleTo28x28, imageDataToMnistTensor } from '$lib/ort/preprocess';
   import { renderProbBars } from '$lib/viz/probBars';
 
-  let models: ModelEntry[] = [];
-  let model: ModelEntry | null = null;
-  let client: OrtClient | null = null;
-  let status = 'loading models…';
+  let models: ModelEntry[] = $state([]);
+  let model: ModelEntry | null = $state(null);
+  let client: OrtClient | null = $state(null);
+  let status = $state('loading models…');
 
   let drawCanvas: HTMLCanvasElement;
-  let isDown = false;
-  let lastX = 0;
-  let lastY = 0;
+  let isDown = $state(false);
+  let lastX = $state(0);
+  let lastY = $state(0);
 
-  let pred = '-';
-  let conf = 0;
+  let pred = $state('-');
+  let conf = $state(0);
 
   let barsEl: HTMLDivElement;
 
