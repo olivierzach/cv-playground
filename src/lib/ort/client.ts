@@ -6,18 +6,26 @@ type WorkerMsg =
 export class OrtClient {
   private w: Worker;
   private ready = false;
+  private readyResolve: (() => void) | null = null;
+  private readyReject: ((err: Error) => void) | null = null;
   private seq = 1;
   private pending = new Map<number, (m: WorkerMsg) => void>();
 
   constructor() {
     // Vite/SvelteKit-friendly worker import
     this.w = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
+
     this.w.onmessage = (ev: MessageEvent<WorkerMsg>) => {
       const msg = ev.data;
+
       if (msg.type === 'ready') {
         this.ready = true;
+        this.readyResolve?.();
+        this.readyResolve = null;
+        this.readyReject = null;
         return;
       }
+
       if (msg.type === 'pred') {
         const cb = this.pending.get(msg.id);
         if (cb) {
@@ -26,26 +34,41 @@ export class OrtClient {
         }
         return;
       }
+
       if (msg.type === 'error') {
-        // Fail all pending
+        // Reject model load if we're currently waiting for it
+        this.readyReject?.(new Error(msg.message));
+        this.readyResolve = null;
+        this.readyReject = null;
+
+        // Fail all pending predictions
         for (const [, cb] of this.pending) cb(msg);
         this.pending.clear();
       }
+    };
+
+    this.w.onerror = (e) => {
+      this.readyReject?.(new Error(e.message || 'Worker error'));
+      this.readyResolve = null;
+      this.readyReject = null;
     };
   }
 
   async load(modelUrl: string, inputName: string, outputName: string): Promise<void> {
     this.ready = false;
-    this.w.postMessage({ type: 'load', modelUrl, inputName, outputName });
-    await this.waitReady(8000);
-  }
 
-  private async waitReady(timeoutMs: number): Promise<void> {
-    const start = performance.now();
-    while (!this.ready) {
-      if (performance.now() - start > timeoutMs) throw new Error('Timed out loading model');
-      await new Promise((r) => setTimeout(r, 25));
-    }
+    const p = new Promise<void>((resolve, reject) => {
+      this.readyResolve = resolve;
+      this.readyReject = reject;
+    });
+
+    this.w.postMessage({ type: 'load', modelUrl, inputName, outputName });
+
+    // Timeout wrapper so we don't hang forever.
+    await Promise.race([
+      p,
+      new Promise<void>((_, reject) => setTimeout(() => reject(new Error('Timed out loading model')), 15000))
+    ]);
   }
 
   async predict(x: Float32Array, shape: [number, number, number, number]): Promise<{ logits: Float32Array; probs: Float32Array }> {
