@@ -1,0 +1,8 @@
+{
+  "sampleIds": [0],
+  "coords3d": [[0.0, 0.0, 0.0]],
+  "label": [0],
+  "pred": [0],
+  "correct": [true],
+  "confidence": [1.0]
+}

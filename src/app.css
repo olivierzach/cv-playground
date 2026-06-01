@@ -1,0 +1,72 @@
+:root{
+  --bg: #0b0f17;
+  --panel: #101827;
+  --muted: #8aa0b8;
+  --fg: #e6eef7;
+  --accent: #7dd3fc;
+  --danger: #fb7185;
+  --ok: #34d399;
+  --grid: rgba(255,255,255,0.06);
+  --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+html, body { height: 100%; }
+body{
+  margin:0;
+  font-family: var(--font);
+  background: radial-gradient(1200px 900px at 40% 10%, #121c2f 0%, var(--bg) 55%, #070a10 100%);
+  color: var(--fg);
+}
+
+a{ color: var(--accent); text-decoration: none; }
+a:hover{ text-decoration: underline; }
+
+.container{ max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+.topbar{
+  display:flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; margin-bottom: 18px;
+}
+.title{ font-size: 18px; letter-spacing: 0.4px; }
+.nav{ display:flex; gap: 14px; font-size: 14px; color: var(--muted); }
+.nav a{ color: var(--muted); }
+.nav a.active{ color: var(--fg); }
+
+.grid{
+  display:grid;
+  grid-template-columns: 280px 1fr 360px;
+  gap: 14px;
+}
+@media (max-width: 1040px){
+  .grid{ grid-template-columns: 1fr; }
+}
+
+.panel{
+  background: color-mix(in oklab, var(--panel) 92%, black 8%);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 10px 22px rgba(0,0,0,0.25);
+}
+
+.h{ font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin: 0 0 10px 0; }
+.row{ display:flex; gap: 10px; align-items:center; flex-wrap: wrap; }
+
+select, button, input[type="range"]{
+  background: rgba(255,255,255,0.06);
+  color: var(--fg);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+button{ cursor:pointer; }
+button.primary{ border-color: rgba(125,211,252,0.45); }
+button:disabled{ opacity: 0.55; cursor: default; }
+
+.kv{ display:grid; grid-template-columns: 1fr auto; gap: 8px; font-size: 13px; color: var(--muted); }
+.kv b{ color: var(--fg); font-weight: 600; }
+
+.canvasBox{ display:flex; justify-content:center; align-items:center; }
+
+hr{ border:0; height:1px; background: rgba(255,255,255,0.08); margin: 12px 0; }

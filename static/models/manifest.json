@@ -1,0 +1,24 @@
+{
+  "models": [
+    {
+      "id": "lenet_placeholder",
+      "name": "LeNet (placeholder)",
+      "onnxPath": "/models/lenet_placeholder/model.onnx",
+      "io": { "input": "input", "output": "logits" },
+      "norm": { "mean": 0.1307, "std": 0.3081 },
+      "assets": {
+        "metrics": "/models/lenet_placeholder/metrics.json",
+        "samplesIndex": "/models/lenet_placeholder/samples/samples.json",
+        "samplesSprite": "/models/lenet_placeholder/samples/samples.png",
+        "embeddings3d": "/models/lenet_placeholder/embeddings/umap3d.json",
+        "featuremapsIndex": "/models/lenet_placeholder/featuremaps/index.json"
+      },
+      "layers": [
+        { "id": "conv1", "displayName": "Conv 1", "channels": 8, "tile": [28, 28] },
+        { "id": "pool1", "displayName": "Pool 1", "channels": 8, "tile": [14, 14] },
+        { "id": "conv2", "displayName": "Conv 2", "channels": 16, "tile": [14, 14] },
+        { "id": "pool2", "displayName": "Pool 2", "channels": 16, "tile": [7, 7] }
+      ]
+    }
+  ]
+}

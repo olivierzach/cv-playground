@@ -1,0 +1,10 @@
+{
+  "samples": {
+    "0": {
+      "conv1": null,
+      "pool1": null,
+      "conv2": null,
+      "pool2": null
+    }
+  }
+}
