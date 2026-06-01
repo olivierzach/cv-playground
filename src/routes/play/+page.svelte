@@ -93,7 +93,11 @@
 
   async function onUp() {
     isDown = false;
-    // debounce-lite: predict after stroke end
+    // Predict after stroke end.
+    // If the model isn't loaded yet, wait for it instead of silently doing nothing.
+    if (status !== 'ready') {
+      await ensureModelLoaded();
+    }
     try {
       await predictNow();
     } catch (e: any) {
