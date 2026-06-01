@@ -6,4 +6,4 @@
   <title>MNIST Playground</title>
 </svelte:head>
 
-<slot />
+{@render children()}

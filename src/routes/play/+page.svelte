@@ -121,12 +121,12 @@
     <div class="panel">
       <div class="h">Controls</div>
       <div class="row">
-        <select bind:value={model} on:change={ensureModelLoaded}>
+        <select bind:value={model} onchange={ensureModelLoaded}>
           {#each models as m}
             <option value={m as any}>{m.name}</option>
           {/each}
         </select>
-        <button on:click={clear}>Clear</button>
+        <button onclick={clear}>Clear</button>
       </div>
       <div style="margin-top:10px; color: var(--muted); font-size: 13px; line-height: 1.5;">
         Draw a digit. On pointer-up, the model predicts instantly (in a Web Worker).
@@ -147,12 +147,12 @@
           width="280"
           height="280"
           style="border-radius: 14px; border: 1px solid rgba(255,255,255,0.10); touch-action:none; background:white"
-          on:pointerdown={onDown}
-          on:pointermove={onMove}
-          on:pointerup={onUp}
-          on:pointercancel={onUp}
-          on:pointerleave={onUp}
-        />
+          onpointerdown={onDown}
+          onpointermove={onMove}
+          onpointerup={onUp}
+          onpointercancel={onUp}
+          onpointerleave={onUp}
+        ></canvas>
       </div>
       <div style="margin-top:10px; color: var(--muted); font-size: 12px;">
         Tip: draw big and centered; MNIST preprocessing will be improved in V2.
@@ -161,7 +161,7 @@
 
     <div class="panel">
       <div class="h">Probabilities</div>
-      <div bind:this={barsEl} />
+      <div bind:this={barsEl}></div>
     </div>
   </div>
 </div>
