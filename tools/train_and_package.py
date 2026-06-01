@@ -212,9 +212,14 @@ def export_onnx(model: nn.Module, out_path: Path):
         out_path,
         input_names=["input"],
         output_names=["logits"],
-        opset_version=17,
+        opset_version=18,
         dynamic_axes={"input": {0: "N"}, "logits": {0: "N"}},
     )
+
+    # Ensure a single-file ONNX (no external data). Required for onnxruntime-web.
+    import onnx
+    m = onnx.load_model(out_path, load_external_data=True)
+    onnx.save_model(m, out_path, save_as_external_data=False)
 
 
 def main():
