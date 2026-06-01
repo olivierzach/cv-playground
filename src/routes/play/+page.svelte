@@ -6,6 +6,7 @@
   import { OrtClient } from '$lib/ort/client';
   import { downsampleTo28x28, imageDataToMnistTensor } from '$lib/ort/preprocess';
   import { renderProbBars } from '$lib/viz/probBars';
+  import { loadImage, drawTile, type SpriteIndex } from '$lib/viz/spriteSheet';
 
   let models: ModelEntry[] = $state([]);
   let model: ModelEntry | null = $state(null);
@@ -20,6 +21,12 @@
   let pred = $state('-');
   let conf = $state(0);
 
+  // Optional: show a known MNIST sample
+  let sampleLabel: number | null = $state(null);
+  let sampleTile: number | null = $state(null);
+  let sampleIdx: SpriteIndex | null = $state(null);
+  let sampleSprite: HTMLImageElement | null = $state(null);
+
   let barsEl: HTMLDivElement;
 
   function setActiveNav() {
@@ -30,6 +37,11 @@
     const ctx = drawCanvas.getContext('2d')!;
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+    sampleLabel = null;
+    sampleTile = null;
+    pred = '-';
+    conf = 0;
+    renderProbBars(barsEl, new Float32Array(10));
   }
 
   async function ensureModelLoaded() {
@@ -45,7 +57,11 @@
   }
 
   async function predictNow() {
-    if (!model || !client) return;
+    if (!model) return;
+    if (!client || status !== 'ready') {
+      await ensureModelLoaded();
+    }
+    if (!client) return;
 
     const img28 = downsampleTo28x28(drawCanvas);
     const x = imageDataToMnistTensor(img28, model.norm.mean, model.norm.std);
@@ -56,6 +72,38 @@
     pred = String(bestI);
     conf = probs[bestI];
     renderProbBars(barsEl, probs);
+  }
+
+  async function loadSampleAssets() {
+    if (!model) return;
+    const r = await fetch(model.assets.samplesIndex);
+    if (!r.ok) return;
+    sampleIdx = (await r.json()) as SpriteIndex;
+    sampleSprite = await loadImage(model.assets.samplesSprite);
+  }
+
+  async function sampleFromDataset() {
+    if (!model) return;
+    if (!sampleIdx || !sampleSprite) {
+      await loadSampleAssets();
+    }
+    if (!sampleIdx || !sampleSprite) return;
+
+    const tile = Math.floor(Math.random() * sampleIdx.count);
+    sampleTile = tile;
+    sampleLabel = sampleIdx.labels[tile] ?? null;
+
+    const ctx = drawCanvas.getContext('2d')!;
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+
+    // Draw the 28x28 tile scaled up into the center.
+    const d = Math.floor(drawCanvas.width * 0.70);
+    const dx = Math.floor((drawCanvas.width - d) / 2);
+    const dy = Math.floor((drawCanvas.height - d) / 2);
+    drawTile(ctx, sampleSprite, sampleIdx, tile, dx, dy, d);
+
+    // do not auto-predict; user presses Predict
   }
 
   function pointerPos(ev: PointerEvent) {
@@ -91,18 +139,9 @@
     lastY = p.y;
   }
 
-  async function onUp() {
+  function onUp() {
     isDown = false;
-    // Predict after stroke end.
-    // If the model isn't loaded yet, wait for it instead of silently doing nothing.
-    if (status !== 'ready') {
-      await ensureModelLoaded();
-    }
-    try {
-      await predictNow();
-    } catch (e: any) {
-      status = e?.message ?? String(e);
-    }
+    // No auto-predict; use the Predict button.
   }
 
   onMount(async () => {
@@ -111,6 +150,7 @@
     clear();
 
     await ensureModelLoaded();
+    await loadSampleAssets();
     renderProbBars(barsEl, new Float32Array(10));
   });
 </script>
@@ -129,11 +169,13 @@
     <div class="panel">
       <div class="h">Controls</div>
       <div class="row">
-        <select bind:value={model} onchange={ensureModelLoaded}>
+        <select bind:value={model} onchange={async () => { await ensureModelLoaded(); await loadSampleAssets(); }}>
           {#each models as m}
             <option value={m as any}>{m.name}</option>
           {/each}
         </select>
+        <button class="primary" onclick={predictNow}>Predict</button>
+        <button onclick={sampleFromDataset}>Sample</button>
         <button onclick={clear}>Clear</button>
       </div>
       <div style="margin-top:10px; color: var(--muted); font-size: 13px; line-height: 1.5;">
@@ -142,6 +184,7 @@
       <hr />
       <div class="kv">
         <div>Status</div><b>{status}</b>
+        <div>Sample label</div><b>{sampleLabel ?? '—'}</b>
         <div>Prediction</div><b style="font-size: 18px">{pred}</b>
         <div>Confidence</div><b>{(conf * 100).toFixed(1)}%</b>
       </div>
