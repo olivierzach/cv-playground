@@ -7,9 +7,9 @@ test('explore loads metrics, samples grid, and renders softmax for selected samp
   await expect(page.getByText('Status')).toBeVisible();
   await expect(page.getByText('ready')).toBeVisible({ timeout: 30_000 });
 
-  // Confusion matrix should have an svg
+  // Confusion matrix should render an svg (D3)
   await expect(page.locator('text=Confusion matrix')).toBeVisible();
-  await expect(page.locator('svg')).toBeVisible();
+  await expect(page.locator('svg').first()).toBeVisible();
 
   // Sample grid canvas should exist
   const grid = page.locator('canvas').first();
