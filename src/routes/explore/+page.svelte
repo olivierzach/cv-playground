@@ -6,6 +6,7 @@
   import { renderProbBars } from '$lib/viz/probBars';
   import { OrtClient } from '$lib/ort/client';
   import { loadImage, drawTile, type SpriteIndex } from '$lib/viz/spriteSheet';
+  import { mountUmap3D, type Umap3D } from '$lib/viz/umap3d';
 
   type Metrics = {
     summary?: { testAcc?: number; testLoss?: number };
@@ -32,6 +33,11 @@
 
   let client: OrtClient | null = null;
 
+  // embeddings
+  let umap: Umap3D | null = null;
+  let umapCanvas: HTMLCanvasElement;
+  let umapHandle: { dispose(): void; render(): void } | null = null;
+
   const GRID_COLS = 25;
   const GRID_ROWS = 10;
   const GRID_COUNT = GRID_COLS * GRID_ROWS;
@@ -54,6 +60,10 @@
     spriteIdx = (await si.json()) as SpriteIndex;
     spriteImg = await loadImage(model.assets.samplesSprite);
 
+    status = 'loading embeddings…';
+    const ei = await fetch(model.assets.embeddings3d);
+    umap = (await ei.json()) as Umap3D;
+
     if (metrics?.confusion) {
       renderConfusionMatrix(confEl, metrics.confusion, {
         onSelect: (t, p) => console.log('confusion select', { t, p })
@@ -61,6 +71,18 @@
     }
 
     await ensureModelLoaded();
+
+    // mount 3D embedding
+    umapHandle?.dispose();
+    umapHandle = mountUmap3D({
+      canvas: umapCanvas,
+      data: umap,
+      onPick: (sampleIndex) => {
+        // sampleIndex indexes into umap arrays, which correspond to our curated ordering.
+        void selectTile(sampleIndex);
+      }
+    });
+
     status = 'ready';
 
     selectedTile = 0;
@@ -189,18 +211,14 @@
     </div>
 
     <div class="panel">
-      <div class="h">Embeddings + Layer lens (next)</div>
-      <div style="color: var(--muted); font-size: 13px; line-height: 1.6;">
-        Assets are already generated:
-        <ul>
-          <li>3D UMAP: <code>{model?.assets.embeddings3d}</code></li>
-          <li>Featuremaps index (currently empty): <code>{model?.assets.featuremapsIndex}</code></li>
-        </ul>
-        Next wiring:
-        <ul>
-          <li>three.js point cloud from <code>umap3d.json</code> (click point → select sample)</li>
-          <li>feature map atlases for conv/pool per sample</li>
-        </ul>
+      <div class="h">3D embedding (UMAP)</div>
+      <div style="height: 260px; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; overflow:hidden;">
+        <canvas bind:this={umapCanvas} style="width:100%; height:100%; display:block;"></canvas>
+      </div>
+      <div style="margin-top:10px; color: var(--muted); font-size: 12px; line-height: 1.55;">
+        Drag to rotate. Scroll to zoom. Double-click a point to select that sample.
+        <br />
+        Feature maps across layers are next (we have placeholders in <code>{model?.assets.featuremapsIndex}</code>).
       </div>
     </div>
   </div>
