@@ -45,7 +45,12 @@
   async function ensureModelLoaded() {
     if (!model) return;
     client = new OrtClient();
-    await client.load(model.onnxPath, model.io.input, model.io.output);
+    try {
+      await client.load(model.onnxPath, model.io.input, model.io.output);
+    } catch (e: any) {
+      status = e?.message ?? String(e);
+      throw e;
+    }
   }
 
   async function loadAssets() {

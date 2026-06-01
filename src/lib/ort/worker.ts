@@ -58,9 +58,18 @@ self.onmessage = async (ev: MessageEvent<Msg>) => {
       // Note: On GitHub Pages, cross-origin isolation may not be enabled; avoid threads.
       ort.env.wasm.numThreads = 1;
 
-      session = await ort.InferenceSession.create(msg.modelUrl, {
-        executionProviders: ['webgpu', 'wasm']
-      });
+      // Headless browsers / some environments may not support WebGPU.
+      // Try WebGPU first, then fall back to WASM deterministically.
+      try {
+        session = await ort.InferenceSession.create(msg.modelUrl, {
+          executionProviders: ['webgpu', 'wasm']
+        });
+      } catch {
+        session = await ort.InferenceSession.create(msg.modelUrl, {
+          executionProviders: ['wasm']
+        });
+      }
+
       const resp: ReadyResp = { type: 'ready' };
       self.postMessage(resp);
       return;

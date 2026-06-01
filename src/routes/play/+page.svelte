@@ -36,8 +36,12 @@
     if (!model) return;
     client = new OrtClient();
     status = `loading model: ${model.name}…`;
-    await client.load(model.onnxPath, model.io.input, model.io.output);
-    status = 'ready';
+    try {
+      await client.load(model.onnxPath, model.io.input, model.io.output);
+      status = 'ready';
+    } catch (e: any) {
+      status = e?.message ?? String(e);
+    }
   }
 
   async function predictNow() {
