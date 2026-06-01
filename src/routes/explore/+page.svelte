@@ -14,27 +14,27 @@
     confusion?: { labels: number[]; matrix: number[][] };
   };
 
-  let models: ModelEntry[] = [];
-  let model: ModelEntry | null = null;
-  let status = 'loading…';
+  let models: ModelEntry[] = $state([]);
+  let model: ModelEntry | null = $state(null);
+  let status = $state('loading…');
 
-  let metrics: Metrics | null = null;
+  let metrics: Metrics | null = $state(null);
   let confEl: HTMLDivElement;
 
   // samples
-  let spriteIdx: SpriteIndex | null = null;
-  let spriteImg: HTMLImageElement | null = null;
+  let spriteIdx: SpriteIndex | null = $state(null);
+  let spriteImg: HTMLImageElement | null = $state(null);
   let gridCanvas: HTMLCanvasElement;
   let sampleCanvas: HTMLCanvasElement;
   let barsEl: HTMLDivElement;
-  let selectedTile = 0;
-  let selectedLabel: number | null = null;
-  let selectedPred: number | null = null;
+  let selectedTile = $state(0);
+  let selectedLabel: number | null = $state(null);
+  let selectedPred: number | null = $state(null);
 
-  let client: OrtClient | null = null;
+  let client: OrtClient | null = $state(null);
 
   // embeddings
-  let umap: Umap3D | null = null;
+  let umap: Umap3D | null = $state(null);
   let umapCanvas: HTMLCanvasElement;
   let umapHandle: { dispose(): void; render(): void } | null = null;
 
@@ -186,7 +186,7 @@
     <div class="panel">
       <div class="h">Model</div>
       <div class="row">
-        <select bind:value={model} on:change={loadAssets}>
+        <select bind:value={model} onchange={loadAssets}>
           {#each models as m}
             <option value={m as any}>{m.name}</option>
           {/each}
@@ -201,17 +201,17 @@
       </div>
       <hr />
       <div class="h">Curated samples (click)</div>
-      <canvas bind:this={gridCanvas} on:click={gridClick} style="width:100%; image-rendering: pixelated; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);" />
+      <canvas bind:this={gridCanvas} onclick={gridClick as any} style="width:100%; image-rendering: pixelated; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);"></canvas>
     </div>
 
     <div class="panel">
       <div class="h">Confusion matrix</div>
-      <div bind:this={confEl} />
+      <div bind:this={confEl}></div>
       <hr />
       <div class="h">Selected sample</div>
       <div class="row" style="align-items:flex-start;">
-        <canvas bind:this={sampleCanvas} style="width:140px; height:140px; background:white; border-radius: 14px; border: 1px solid rgba(255,255,255,0.10); image-rendering: pixelated;" />
-        <div style="flex:1; min-width: 220px" bind:this={barsEl} />
+        <canvas bind:this={sampleCanvas} style="width:140px; height:140px; background:white; border-radius: 14px; border: 1px solid rgba(255,255,255,0.10); image-rendering: pixelated;"></canvas>
+        <div style="flex:1; min-width: 220px" bind:this={barsEl}></div>
       </div>
     </div>
 
