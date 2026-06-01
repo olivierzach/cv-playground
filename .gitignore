@@ -25,3 +25,6 @@ vite.config.ts.timestamp-*
 # local datasets
 .data/
 .venv/
+
+test-results/
+playwright-report/
