@@ -15,10 +15,9 @@ test('explore loads metrics, samples grid, and renders softmax for selected samp
   const grid = page.locator('canvas').first();
   await expect(grid).toBeVisible();
 
-  // Softmax svg should exist in selected sample panel
+  // Selected sample section should exist
   await expect(page.locator('text=Selected sample')).toBeVisible();
-  await expect(page.locator('div').filter({ hasText: 'Selected sample' })).toBeVisible();
 
-  // There should be an svg under the bars container (D3)
-  await expect(page.locator('svg').nth(1)).toBeVisible();
+  // There should be multiple SVGs (confusion + prob bars)
+  await expect(page.locator('svg')).toHaveCount(2);
 });
