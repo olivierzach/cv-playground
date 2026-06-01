@@ -1,15 +1,14 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  $: path = $page.url.pathname;
 </script>
 
 <div class="container">
   <div class="topbar">
     <div class="title">MNIST Playground</div>
     <nav class="nav">
-      <a class:active={path==='/'} href="/">Home</a>
-      <a class:active={path.startsWith('/explore')} href="/explore">Explore</a>
-      <a class:active={path.startsWith('/play')} href="/play">Play</a>
+      <a class:active={$page.url.pathname === '/'} href="/">Home</a>
+      <a class:active={$page.url.pathname.startsWith('/explore')} href="/explore">Explore</a>
+      <a class:active={$page.url.pathname.startsWith('/play')} href="/play">Play</a>
     </nav>
   </div>
 
