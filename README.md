@@ -71,7 +71,7 @@ Configs currently include `mlp_baseline`, `cnn_fast`, `cnn_strong`, `cnn_rotatio
 
 `cnn_freedraw_robust` trains with ordinary MNIST plus targeted perturbations for free-draw failure cases: moderate rotations across all digits, mirrored/backwards `3` and `7`, and upside-down-ish `1`.
 
-## Validation Proof
+## Validation
 
 ```bash
 npm test
@@ -79,4 +79,9 @@ npm run test:fuzz
 npm run test:screenshots
 ```
 
-Screenshot proof is written to `artifacts/screenshots/` and ignored by git. CI uploads screenshots, Playwright traces/reports, and `artifacts/validation-summary.md`.
+- `npm test`: Playwright smoke coverage for `/play`, `/explore`, and mobile layout.
+- `npm run test:fuzz`: seeded canvas, model-switching, prediction, and filtering stress tests.
+- `npm run test:screenshots`: screenshot capture for `/play` and `/explore`.
+
+Screenshot output: `artifacts/screenshots/`  
+CI artifacts: screenshots, Playwright traces/reports, and `artifacts/validation-summary.md`
