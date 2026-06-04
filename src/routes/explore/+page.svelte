@@ -244,8 +244,8 @@
     </nav>
   </div>
 
-  <div class="grid">
-    <div class="panel">
+  <div class="grid explore-grid">
+    <div class="panel explore-model-panel">
       <div class="h">Model</div>
       <div class="row">
         <select bind:value={model} onchange={loadAssets}>
@@ -272,7 +272,7 @@
       <canvas bind:this={gridCanvas} onclick={gridClick as any} style="width:100%; image-rendering: pixelated; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);"></canvas>
     </div>
 
-    <div class="panel">
+    <div class="panel explore-analysis-panel">
       <div class="h">Confusion matrix</div>
       <div bind:this={confEl}></div>
       <hr />
@@ -286,7 +286,7 @@
       <div bind:this={logitsEl}></div>
     </div>
 
-    <div class="panel">
+    <div class="panel explore-viz-panel">
       <div class="h">3D embedding (UMAP)</div>
       <div class="digit-filter">
         <button class:active={labelFocus === null} onclick={() => setLabelFocus(null)}>all</button>

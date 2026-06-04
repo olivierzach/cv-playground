@@ -620,37 +620,45 @@
     </nav>
   </div>
 
-  <div class="grid">
-    <div class="panel">
-      <div class="h">Controls</div>
-      <div class="row">
-        <select bind:value={model} onchange={changeModel}>
-          {#each models as m}
-            <option value={m as any}>{m.name}</option>
-          {/each}
-        </select>
-      </div>
-      <hr />
-      <div class="kv">
-        <div>Status</div><b>{status}</b>
-        <div>Sample label</div><b>{sampleLabel ?? '-'}</b>
-        <div>Prediction</div><b style="font-size: 18px">{pred}</b>
-        <div>Confidence</div><b>{(conf * 100).toFixed(1)}%</b>
-      </div>
-      <hr />
-      <div class="h">Convolution trace</div>
-      <div bind:this={convTraceEl}></div>
-      <hr />
-      <div class="h">Preprocessing</div>
-      <canvas bind:this={previewCanvas} class="preview-canvas"></canvas>
-      <div class="mini-label">28x28 normalized input</div>
-      <div class="preprocess-heatmaps heatmaps" bind:this={preprocessEl}></div>
-      <hr />
-      <div class="h">CNN Strong architecture</div>
-      <div bind:this={architectureEl}></div>
+  <div class="grid play-grid">
+    <div class="panel play-side-panel">
+      <section class="play-side-section play-model-section">
+        <div class="h">Controls</div>
+        <div class="row">
+          <select bind:value={model} onchange={changeModel}>
+            {#each models as m}
+              <option value={m as any}>{m.name}</option>
+            {/each}
+          </select>
+        </div>
+        <hr />
+        <div class="kv">
+          <div>Status</div><b>{status}</b>
+          <div>Sample label</div><b>{sampleLabel ?? '-'}</b>
+          <div>Prediction</div><b style="font-size: 18px">{pred}</b>
+          <div>Confidence</div><b>{(conf * 100).toFixed(1)}%</b>
+        </div>
+      </section>
+      <section class="play-side-section play-conv-section">
+        <hr />
+        <div class="h">Convolution trace</div>
+        <div bind:this={convTraceEl}></div>
+      </section>
+      <section class="play-side-section play-preprocess-section">
+        <hr />
+        <div class="h">Preprocessing</div>
+        <canvas bind:this={previewCanvas} class="preview-canvas"></canvas>
+        <div class="mini-label">28x28 normalized input</div>
+        <div class="preprocess-heatmaps heatmaps" bind:this={preprocessEl}></div>
+      </section>
+      <section class="play-side-section play-arch-section">
+        <hr />
+        <div class="h">CNN Strong architecture</div>
+        <div bind:this={architectureEl}></div>
+      </section>
     </div>
 
-    <div class="panel center-workbench">
+    <div class="panel center-workbench play-primary-panel">
       <div class="h">Draw</div>
       <div class="canvasBox">
         <canvas
@@ -665,7 +673,7 @@
           onpointerleave={onUp}
         ></canvas>
       </div>
-      <div class="row" style="margin-top: 10px; justify-content:center;">
+      <div class="row play-actions" style="margin-top: 10px; justify-content:center;">
         <button class="primary" onclick={predictNow}>Predict</button>
         <button onclick={() => sampleFromDataset()}>Sample</button>
         <button onclick={clear}>Clear</button>
@@ -718,7 +726,7 @@
       <div class="mini-label">{logitQueryDetail}</div>
     </div>
 
-    <div class="panel">
+    <div class="panel play-output-panel">
       <div class="h">Probabilities</div>
       <div bind:this={barsEl}></div>
       <hr />
