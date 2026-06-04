@@ -1,0 +1,8 @@
+{
+  "id": "cnn_fast",
+  "architecture": "cnn",
+  "channels": [16, 32],
+  "epochs": 3,
+  "minimumAccuracy": 0.97,
+  "default": true
+}

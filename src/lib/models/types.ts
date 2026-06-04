@@ -17,8 +17,13 @@ export type ModelEntry = {
     samplesSprite: string;
     embeddings3d: string;
     featuremapsIndex: string;
+    modelCard?: string;
   };
   layers: ModelLayer[];
 };
 
-export type ModelManifest = { models: ModelEntry[] };
+export type ModelManifest = {
+  schemaVersion?: number;
+  defaultModelId?: string;
+  models: ModelEntry[];
+};

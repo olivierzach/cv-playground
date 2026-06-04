@@ -1,8 +1,10 @@
 {
+  "schemaVersion": 1,
+  "defaultModelId": "cnn_fast",
   "models": [
     {
-      "id": "mlp_h256",
-      "name": "MLP (h=256)",
+      "id": "mlp_baseline",
+      "name": "MLP Baseline",
       "onnxPath": "/models/mlp_h256/model.onnx",
       "io": {
         "input": "input",
@@ -17,13 +19,14 @@
         "samplesIndex": "/models/mlp_h256/samples/samples.json",
         "samplesSprite": "/models/mlp_h256/samples/samples.png",
         "embeddings3d": "/models/mlp_h256/embeddings/umap3d.json",
-        "featuremapsIndex": "/models/mlp_h256/featuremaps/index.json"
+        "featuremapsIndex": "/models/mlp_h256/featuremaps/index.json",
+        "modelCard": "/models/mlp_h256/model-card.md"
       },
       "layers": []
     },
     {
-      "id": "cnn_small",
-      "name": "Small CNN (16/32)",
+      "id": "cnn_fast",
+      "name": "CNN Fast",
       "onnxPath": "/models/cnn_small/model.onnx",
       "io": {
         "input": "input",
@@ -38,7 +41,8 @@
         "samplesIndex": "/models/cnn_small/samples/samples.json",
         "samplesSprite": "/models/cnn_small/samples/samples.png",
         "embeddings3d": "/models/cnn_small/embeddings/umap3d.json",
-        "featuremapsIndex": "/models/cnn_small/featuremaps/index.json"
+        "featuremapsIndex": "/models/cnn_small/featuremaps/index.json",
+        "modelCard": "/models/cnn_small/model-card.md"
       },
       "layers": [
         {
@@ -72,6 +76,183 @@
           "id": "pool2",
           "displayName": "Pool 2",
           "channels": 32,
+          "tile": [
+            7,
+            7
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cnn_strong",
+      "name": "CNN Strong",
+      "onnxPath": "/models/cnn_good/model.onnx",
+      "io": {
+        "input": "input",
+        "output": "logits"
+      },
+      "norm": {
+        "mean": 0.1307,
+        "std": 0.3081
+      },
+      "assets": {
+        "metrics": "/models/cnn_good/metrics.json",
+        "samplesIndex": "/models/cnn_good/samples/samples.json",
+        "samplesSprite": "/models/cnn_good/samples/samples.png",
+        "embeddings3d": "/models/cnn_good/embeddings/umap3d.json",
+        "featuremapsIndex": "/models/cnn_good/featuremaps/index.json",
+        "modelCard": "/models/cnn_good/model-card.md"
+      },
+      "layers": [
+        {
+          "id": "conv1",
+          "displayName": "Conv 1",
+          "channels": 32,
+          "tile": [
+            28,
+            28
+          ]
+        },
+        {
+          "id": "pool1",
+          "displayName": "Pool 1",
+          "channels": 32,
+          "tile": [
+            14,
+            14
+          ]
+        },
+        {
+          "id": "conv2",
+          "displayName": "Conv 2",
+          "channels": 64,
+          "tile": [
+            14,
+            14
+          ]
+        },
+        {
+          "id": "pool2",
+          "displayName": "Pool 2",
+          "channels": 64,
+          "tile": [
+            7,
+            7
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cnn_rotation_robust",
+      "name": "CNN Rotation Robust (1s)",
+      "onnxPath": "/models/cnn_rotation_robust/model.onnx",
+      "io": {
+        "input": "input",
+        "output": "logits"
+      },
+      "norm": {
+        "mean": 0.1307,
+        "std": 0.3081
+      },
+      "assets": {
+        "metrics": "/models/cnn_rotation_robust/metrics.json",
+        "samplesIndex": "/models/cnn_rotation_robust/samples/samples.json",
+        "samplesSprite": "/models/cnn_rotation_robust/samples/samples.png",
+        "embeddings3d": "/models/cnn_rotation_robust/embeddings/umap3d.json",
+        "featuremapsIndex": "/models/cnn_rotation_robust/featuremaps/index.json",
+        "modelCard": "/models/cnn_rotation_robust/model-card.md"
+      },
+      "layers": [
+        {
+          "id": "conv1",
+          "displayName": "Conv 1",
+          "channels": 32,
+          "tile": [
+            28,
+            28
+          ]
+        },
+        {
+          "id": "pool1",
+          "displayName": "Pool 1",
+          "channels": 32,
+          "tile": [
+            14,
+            14
+          ]
+        },
+        {
+          "id": "conv2",
+          "displayName": "Conv 2",
+          "channels": 64,
+          "tile": [
+            14,
+            14
+          ]
+        },
+        {
+          "id": "pool2",
+          "displayName": "Pool 2",
+          "channels": 64,
+          "tile": [
+            7,
+            7
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cnn_freedraw_robust",
+      "name": "CNN Free Draw Robust",
+      "onnxPath": "/models/cnn_freedraw_robust/model.onnx",
+      "io": {
+        "input": "input",
+        "output": "logits"
+      },
+      "norm": {
+        "mean": 0.1307,
+        "std": 0.3081
+      },
+      "assets": {
+        "metrics": "/models/cnn_freedraw_robust/metrics.json",
+        "samplesIndex": "/models/cnn_freedraw_robust/samples/samples.json",
+        "samplesSprite": "/models/cnn_freedraw_robust/samples/samples.png",
+        "embeddings3d": "/models/cnn_freedraw_robust/embeddings/umap3d.json",
+        "featuremapsIndex": "/models/cnn_freedraw_robust/featuremaps/index.json",
+        "modelCard": "/models/cnn_freedraw_robust/model-card.md"
+      },
+      "layers": [
+        {
+          "id": "conv1",
+          "displayName": "Conv 1",
+          "channels": 32,
+          "tile": [
+            28,
+            28
+          ]
+        },
+        {
+          "id": "pool1",
+          "displayName": "Pool 1",
+          "channels": 32,
+          "tile": [
+            14,
+            14
+          ]
+        },
+        {
+          "id": "conv2",
+          "displayName": "Conv 2",
+          "channels": 64,
+          "tile": [
+            14,
+            14
+          ]
+        },
+        {
+          "id": "pool2",
+          "displayName": "Pool 2",
+          "channels": 64,
           "tile": [
             7,
             7

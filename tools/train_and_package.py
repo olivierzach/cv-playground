@@ -28,8 +28,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, Dataset, Subset
 from torchvision import datasets, transforms
+from torchvision.transforms import functional as TF
 from tqdm import tqdm
 
 from sklearn.metrics import confusion_matrix
@@ -38,12 +39,26 @@ import umap
 
 MNIST_MEAN = 0.1307
 MNIST_STD = 0.3081
+CONFIG_DIR = Path("mnist_playground/configs")
+ARTIFACT_DIRS = {
+    "mlp_baseline": "mlp_h256",
+    "cnn_fast": "cnn_small",
+    "cnn_strong": "cnn_good",
+}
 
 
 @dataclass
 class PackSpec:
     model_id: str
     model_name: str
+    artifact_dir: str
+    architecture: str = "cnn"
+    channels: Tuple[int, int] = (16, 32)
+    hidden: int = 256
+    epochs: int | None = None
+    augment: bool = False
+    targeted_perturbation: dict | None = None
+    minimum_accuracy: float | None = None
 
 
 class MLP(nn.Module):
@@ -105,6 +120,92 @@ def ensure_dir(p: Path):
 def write_json(path: Path, obj):
     ensure_dir(path.parent)
     path.write_text(json.dumps(obj, indent=2))
+
+
+def read_json(path: Path, fallback):
+    if not path.exists():
+        return fallback
+    return json.loads(path.read_text())
+
+
+class TargetedPerturbMNIST(Dataset):
+    def __init__(self, root: str, train: bool, download: bool, base_transform, general_transform=None, targeted: dict | None = None):
+        self.ds = datasets.MNIST(root, train=train, download=download, transform=None)
+        self.base_transform = base_transform
+        self.general_transform = general_transform
+        self.targeted = targeted or {}
+        self.rules = self._build_rules(self.targeted)
+
+    def _build_rules(self, targeted: dict) -> list[dict]:
+        rules = targeted.get("rules")
+        if isinstance(rules, list):
+            return [rule for rule in rules if isinstance(rule, dict)]
+        if targeted.get("labels"):
+            return [targeted]
+        return []
+
+    def __len__(self):
+        return len(self.ds)
+
+    def __getitem__(self, index):
+        img, y = self.ds[index]
+        img = self.apply_targeted_perturbations(img, int(y))
+        if self.general_transform is not None:
+            return self.general_transform(img), y
+        return self.base_transform(img), y
+
+    def apply_targeted_perturbations(self, img, y: int):
+        for rule in self.rules:
+            labels = set(int(v) for v in rule.get("labels", []))
+            if y not in labels:
+                continue
+            if torch.rand(()).item() >= float(rule.get("probability", 0)):
+                continue
+
+            if rule.get("horizontalFlip", False):
+                img = TF.hflip(img)
+
+            if "rotateDegrees" in rule:
+                lo, hi = self._bounds(rule["rotateDegrees"], 0.0)
+                angle = torch.empty(()).uniform_(lo, hi).item()
+                img = TF.rotate(img, angle, interpolation=TF.InterpolationMode.BILINEAR, fill=0)
+
+            if any(key in rule for key in ("translate", "scale", "shear")):
+                translate = self._translate(rule.get("translate", [0, 0]), img.size)
+                scale_lo, scale_hi = self._bounds(rule.get("scale", [1, 1]), 1.0)
+                shear_lo, shear_hi = self._bounds(rule.get("shear", [0, 0]), 0.0)
+                img = TF.affine(
+                    img,
+                    angle=0.0,
+                    translate=translate,
+                    scale=torch.empty(()).uniform_(scale_lo, scale_hi).item(),
+                    shear=[torch.empty(()).uniform_(shear_lo, shear_hi).item(), 0.0],
+                    interpolation=TF.InterpolationMode.BILINEAR,
+                    fill=0,
+                )
+        return img
+
+    def _bounds(self, values, default: float) -> tuple[float, float]:
+        if isinstance(values, (int, float)):
+            value = float(values)
+            return value, value
+        if isinstance(values, list) and len(values) >= 2:
+            return float(values[0]), float(values[1])
+        return default, default
+
+    def _translate(self, values, size: tuple[int, int]) -> list[int]:
+        width, height = size
+        if not isinstance(values, list) or len(values) < 2:
+            return [0, 0]
+        max_dx = float(values[0])
+        max_dy = float(values[1])
+        if abs(max_dx) <= 1:
+            max_dx *= width
+        if abs(max_dy) <= 1:
+            max_dy *= height
+        dx = int(round(torch.empty(()).uniform_(-abs(max_dx), abs(max_dx)).item()))
+        dy = int(round(torch.empty(()).uniform_(-abs(max_dy), abs(max_dy)).item()))
+        return [dx, dy]
 
 
 def make_samples_sprite(images: np.ndarray, out_png: Path, tile=28, cols=50):
@@ -219,7 +320,76 @@ def export_onnx(model: nn.Module, out_path: Path):
     # Ensure a single-file ONNX (no external data). Required for onnxruntime-web.
     import onnx
     m = onnx.load_model(out_path, load_external_data=True)
-    onnx.save_model(m, out_path, save_as_external_data=False)
+    onnx.save_model(m, out_path, save_as_external_data=False, size_threshold=2**31 - 1)
+
+    external_path = out_path.with_suffix(out_path.suffix + ".data")
+    if external_path.exists():
+        external_path.unlink()
+
+    reloaded = onnx.load_model(out_path, load_external_data=False)
+    external_tensors = [
+        tensor.name
+        for tensor in reloaded.graph.initializer
+        if tensor.data_location == onnx.TensorProto.EXTERNAL
+    ]
+    if external_tensors:
+        raise RuntimeError(f"ONNX export still contains external tensors: {external_tensors[:5]}")
+
+
+def load_pack_specs(config_name: str | None) -> list[PackSpec]:
+    if config_name and config_name != "all":
+        cfg = read_json(CONFIG_DIR / f"{config_name}.json", None)
+        if not isinstance(cfg, dict):
+            raise SystemExit(f"Unknown config: {config_name}")
+        return [spec_from_config(cfg)]
+
+    return [
+        PackSpec("mlp_baseline", "MLP Baseline", "mlp_h256", architecture="mlp", hidden=256),
+        PackSpec("cnn_fast", "CNN Fast", "cnn_small", channels=(16, 32), epochs=3),
+        PackSpec("cnn_strong", "CNN Strong", "cnn_good", channels=(32, 64), epochs=5, augment=True),
+    ]
+
+
+def spec_from_config(cfg: dict) -> PackSpec:
+    channels = tuple(int(v) for v in cfg.get("channels", [16, 32]))
+    if len(channels) != 2:
+        raise SystemExit(f"Config {cfg.get('id')} must provide exactly two CNN channel counts")
+    return PackSpec(
+        model_id=str(cfg["id"]),
+        model_name=str(cfg.get("name") or title_model_name(str(cfg["id"]))),
+        artifact_dir=str(cfg.get("artifactDir") or ARTIFACT_DIRS.get(str(cfg["id"]), str(cfg["id"]))),
+        architecture=str(cfg.get("architecture", "cnn")),
+        channels=(channels[0], channels[1]),
+        hidden=int(cfg.get("hidden", 256)),
+        epochs=int(cfg["epochs"]) if "epochs" in cfg else None,
+        augment=bool(cfg.get("augment", False)),
+        targeted_perturbation=cfg.get("targetedPerturbation"),
+        minimum_accuracy=cfg.get("minimumAccuracy"),
+    )
+
+
+def title_model_name(model_id: str) -> str:
+    return model_id.replace("_", " ").title()
+
+
+def make_model(spec: PackSpec) -> nn.Module:
+    if spec.architecture == "mlp":
+        return MLP(hidden=spec.hidden)
+    if spec.architecture == "cnn":
+        return SmallCNN(*spec.channels)
+    raise SystemExit(f"Unsupported architecture for {spec.model_id}: {spec.architecture}")
+
+
+def model_layers(spec: PackSpec) -> list[dict]:
+    if spec.architecture != "cnn":
+        return []
+    c1, c2 = spec.channels
+    return [
+        {"id": "conv1", "displayName": "Conv 1", "channels": c1, "tile": [28, 28]},
+        {"id": "pool1", "displayName": "Pool 1", "channels": c1, "tile": [14, 14]},
+        {"id": "conv2", "displayName": "Conv 2", "channels": c2, "tile": [14, 14]},
+        {"id": "pool2", "displayName": "Pool 2", "channels": c2, "tile": [7, 7]},
+    ]
 
 
 def main():
@@ -229,6 +399,7 @@ def main():
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--curated", type=int, default=2000)
+    ap.add_argument("--config", type=str, default="all", help="Model config name from mnist_playground/configs, or 'all'.")
     args = ap.parse_args()
 
     seed_all(args.seed)
@@ -251,30 +422,41 @@ def main():
     curated_idx = list(range(min(args.curated, len(ds_test))))
     curated = Subset(ds_test, curated_idx)
 
-    train_loader = DataLoader(ds_train, batch_size=128, shuffle=True, num_workers=0)
-    train_loader_aug = DataLoader(datasets.MNIST(".data", train=True, download=True, transform=tfm_aug), batch_size=128, shuffle=True, num_workers=0)
     val_loader = DataLoader(curated, batch_size=256, shuffle=False, num_workers=0)
 
-    packs = [
-        (PackSpec("mlp_h256", "MLP (h=256)"), MLP(hidden=256)),
-        (PackSpec("cnn_small", "Small CNN (16/32)"), SmallCNN(16, 32)),
-        (PackSpec("cnn_good", "Good CNN (32/64, aug)"), SmallCNN(32, 64)),
-    ]
+    specs = load_pack_specs(args.config)
 
     out_root = Path(args.out)
     ensure_dir(out_root)
 
     manifest_path = Path("static/models/manifest.json")
-    manifest = {"models": []}
+    manifest = {"schemaVersion": 1, "defaultModelId": "cnn_fast", "models": []}
+    if args.config != "all":
+        existing = read_json(manifest_path, manifest)
+        if isinstance(existing, dict) and isinstance(existing.get("models"), list):
+            manifest = existing
 
-    for spec, model in packs:
+    for spec in specs:
         print(f"\n=== {spec.model_id}: {spec.model_name} ===")
+        model = make_model(spec)
         model.to(device)
 
-        # Use augmentation only for the "good" CNN variant.
-        loader = train_loader_aug if spec.model_id == 'cnn_good' else train_loader
-        # Slightly longer by default for cnn_good even if caller uses small epochs.
-        epochs = args.epochs if spec.model_id != 'cnn_good' else max(args.epochs, 5)
+        if spec.targeted_perturbation:
+            train_ds = TargetedPerturbMNIST(
+                ".data",
+                train=True,
+                download=True,
+                base_transform=tfm,
+                general_transform=tfm_aug if spec.augment else None,
+                targeted=spec.targeted_perturbation,
+            )
+        elif spec.augment:
+            train_ds = datasets.MNIST(".data", train=True, download=True, transform=tfm_aug)
+        else:
+            train_ds = ds_train
+        loader = DataLoader(train_ds, batch_size=128, shuffle=True, num_workers=0)
+
+        epochs = spec.epochs if spec.epochs is not None else args.epochs
         curves = train_one(model, loader, val_loader, device, epochs, args.lr)
         ev = eval_and_collect(model, val_loader, device)
 
@@ -286,7 +468,10 @@ def main():
             "confusion": {"labels": list(range(10)), "matrix": cm},
         }
 
-        model_dir = out_root / spec.model_id
+        if spec.minimum_accuracy is not None and ev["acc"] < float(spec.minimum_accuracy):
+            raise SystemExit(f"{spec.model_id} accuracy {ev['acc']:.4f} is below configured threshold {spec.minimum_accuracy}")
+
+        model_dir = out_root / spec.artifact_dir
         export_onnx(model, model_dir / "model.onnx")
         write_json(model_dir / "metrics.json", metrics)
 
@@ -332,32 +517,35 @@ def main():
             }
             write_json(model_dir / "embeddings" / "umap3d.json", out)
 
-        # featuremaps placeholder index (real featuremap atlases are next step)
-        write_json(model_dir / "featuremaps" / "index.json", {"samples": {}})
+        # featuremaps index is filled with learned convolution weights after ONNX export.
+        if spec.architecture == "cnn":
+            from mnist_playground.features import export_conv_features
+            export_conv_features(model_dir)
+        else:
+            write_json(model_dir / "featuremaps" / "index.json", {"schemaVersion": 1, "kind": "unsupported", "samples": {}})
 
         # append manifest entry
         entry = {
             "id": spec.model_id,
             "name": spec.model_name,
-            "onnxPath": f"/models/{spec.model_id}/model.onnx",
+            "onnxPath": f"/models/{spec.artifact_dir}/model.onnx",
             "io": {"input": "input", "output": "logits"},
             "norm": {"mean": MNIST_MEAN, "std": MNIST_STD},
             "assets": {
-                "metrics": f"/models/{spec.model_id}/metrics.json",
-                "samplesIndex": f"/models/{spec.model_id}/samples/samples.json",
-                "samplesSprite": f"/models/{spec.model_id}/samples/samples.png",
-                "embeddings3d": f"/models/{spec.model_id}/embeddings/umap3d.json",
-                "featuremapsIndex": f"/models/{spec.model_id}/featuremaps/index.json",
+                "metrics": f"/models/{spec.artifact_dir}/metrics.json",
+                "samplesIndex": f"/models/{spec.artifact_dir}/samples/samples.json",
+                "samplesSprite": f"/models/{spec.artifact_dir}/samples/samples.png",
+                "embeddings3d": f"/models/{spec.artifact_dir}/embeddings/umap3d.json",
+                "featuremapsIndex": f"/models/{spec.artifact_dir}/featuremaps/index.json",
+                "modelCard": f"/models/{spec.artifact_dir}/model-card.md",
             },
-            "layers": [
-                {"id": "conv1", "displayName": "Conv 1", "channels": 16, "tile": [28, 28]},
-                {"id": "pool1", "displayName": "Pool 1", "channels": 16, "tile": [14, 14]},
-                {"id": "conv2", "displayName": "Conv 2", "channels": 32, "tile": [14, 14]},
-                {"id": "pool2", "displayName": "Pool 2", "channels": 32, "tile": [7, 7]},
-            ],
+            "layers": model_layers(spec),
         }
-        if spec.model_id.startswith("mlp"):
-            entry["layers"] = []
+        ensure_dir(model_dir)
+        (model_dir / "model-card.md").write_text(
+            f"# {entry['name']}\n\nGenerated by `python -m mnist_playground train --config {spec.model_id}`.\n"
+        )
+        manifest["models"] = [m for m in manifest["models"] if m.get("id") != entry["id"]]
         manifest["models"].append(entry)
 
     write_json(manifest_path, manifest)

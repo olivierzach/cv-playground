@@ -71,6 +71,15 @@ export class OrtClient {
     ]);
   }
 
+  dispose() {
+    for (const [, cb] of this.pending) cb({ type: 'error', message: 'Client disposed' });
+    this.pending.clear();
+    this.ready = false;
+    this.readyResolve = null;
+    this.readyReject = null;
+    this.w.terminate();
+  }
+
   async predict(x: Float32Array, shape: [number, number, number, number]): Promise<{ logits: Float32Array; probs: Float32Array }> {
     if (!this.ready) throw new Error('Model not ready');
     const id = this.seq++;
@@ -82,5 +91,12 @@ export class OrtClient {
     if (msg.type === 'error') throw new Error(msg.message);
     if (msg.type !== 'pred') throw new Error('Unexpected worker message');
     return { logits: msg.logits, probs: msg.probs };
+  }
+
+  async predictBatch(x: Float32Array, batchSize: number): Promise<{ logits: Float32Array; probs: Float32Array }> {
+    if (x.length !== batchSize * 28 * 28) {
+      throw new Error(`Expected ${batchSize * 28 * 28} tensor values for batch ${batchSize}, got ${x.length}`);
+    }
+    return this.predict(x, [batchSize, 1, 28, 28]);
   }
 }

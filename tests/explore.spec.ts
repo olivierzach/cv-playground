@@ -18,6 +18,8 @@ test('explore loads metrics, samples grid, and renders softmax for selected samp
   // Selected sample section should exist
   await expect(page.locator('text=Selected sample')).toBeVisible();
 
-  // There should be multiple SVGs (confusion + prob bars)
-  await expect(page.locator('svg')).toHaveCount(2);
+  // Confusion, probability bars, embedding, and feature map plots should all render.
+  await expect.poll(async () => page.locator('svg').count()).toBeGreaterThanOrEqual(6);
+  await expect.poll(async () => page.locator('svg.heatmap-svg').count()).toBeGreaterThanOrEqual(2);
+  await expect(page.locator('svg.umap-svg')).toBeVisible();
 });

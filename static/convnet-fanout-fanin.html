@@ -1,0 +1,838 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Convnet Fan-Out / Fan-In Diagram</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070b12;
+      --panel: #0f1724;
+      --ink: #e6eef7;
+      --muted: #91a4b8;
+      --line: rgba(230, 238, 247, 0.18);
+      --cyan: #38bdf8;
+      --rose: #fb7185;
+      --lime: #a3e635;
+      --amber: #facc15;
+      --violet: #c084fc;
+      --teal: #14b8a6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 28% 14%, rgba(56, 189, 248, 0.15), transparent 30%),
+        radial-gradient(circle at 74% 20%, rgba(192, 132, 252, 0.10), transparent 28%),
+        linear-gradient(180deg, #0b111d 0%, var(--bg) 62%, #05070b 100%);
+    }
+
+    main {
+      width: min(1220px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 28px 0 36px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(24px, 3vw, 42px);
+      letter-spacing: 0;
+      line-height: 1.05;
+    }
+
+    .subtitle {
+      max-width: 860px;
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .stage {
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 10px;
+      background: rgba(15, 23, 36, 0.72);
+      overflow: hidden;
+      box-shadow: 0 18px 42px rgba(0,0,0,0.32);
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #07101d;
+    }
+
+    .caption {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1px;
+      background: rgba(255,255,255,0.07);
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .caption div {
+      min-width: 0;
+      padding: 12px 14px;
+      background: rgba(15,23,36,0.96);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .caption b {
+      display: block;
+      color: var(--ink);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.11em;
+      margin-bottom: 5px;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    input[type="range"] {
+      accent-color: var(--cyan);
+      width: min(360px, 100%);
+    }
+
+    .readout {
+      color: var(--ink);
+      font-weight: 700;
+      min-width: 132px;
+    }
+
+    .numeric {
+      margin-top: 16px;
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 10px;
+      background: rgba(15, 23, 36, 0.72);
+      padding: 16px;
+      box-shadow: 0 18px 42px rgba(0,0,0,0.24);
+    }
+
+    .numeric h2 {
+      margin: 0 0 6px;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    .numeric p {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .math-grid {
+      display: grid;
+      grid-template-columns: auto auto auto auto auto;
+      gap: 10px;
+      align-items: center;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .matrix {
+      display: grid;
+      grid-template-columns: repeat(5, 34px);
+      gap: 3px;
+      padding: 8px;
+      border-radius: 8px;
+      background: rgba(3,7,18,0.48);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .cell-num {
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 5px;
+      background: rgba(255,255,255,0.055);
+      color: var(--ink);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .cell-num.hot { background: rgba(56,189,248,0.18); }
+    .cell-num.weight-pos { background: rgba(163,230,53,0.15); color: #d9f99d; }
+    .cell-num.weight-neg { background: rgba(251,113,133,0.15); color: #fecdd3; }
+    .cell-num.product { background: rgba(250,204,21,0.13); color: #fde68a; }
+
+    .op {
+      color: var(--muted);
+      font-size: 24px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .result-box {
+      min-width: 220px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: rgba(3,7,18,0.48);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .result-box b {
+      color: var(--ink);
+    }
+
+    .depth-panel {
+      margin-top: 16px;
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 10px;
+      background: rgba(15, 23, 36, 0.72);
+      padding: 16px;
+      box-shadow: 0 18px 42px rgba(0,0,0,0.24);
+    }
+
+    .depth-panel h2 {
+      margin: 0 0 6px;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    .depth-panel p {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .depth-stage {
+      display: grid;
+      grid-template-columns: minmax(300px, 1fr) auto minmax(300px, 1fr) auto minmax(220px, 0.7fr);
+      gap: 18px;
+      align-items: center;
+      overflow-x: auto;
+      padding: 8px 0 2px;
+    }
+
+    .stack-card {
+      min-height: 330px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(3,7,18,0.36);
+      padding: 12px;
+      position: relative;
+    }
+
+    .stack-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+
+    .stack-title span {
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .depth-stack {
+      position: relative;
+      height: 245px;
+      margin-top: 18px;
+    }
+
+    .slice {
+      position: absolute;
+      width: 138px;
+      height: 138px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background:
+        linear-gradient(90deg, rgba(255,255,255,0.055) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(255,255,255,0.055) 1px, transparent 1px),
+        rgba(15,23,42,0.96);
+      background-size: 13.8px 13.8px;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.24);
+    }
+
+    .slice.input {
+      background-color: rgba(14, 165, 233, 0.16);
+      border-color: rgba(56,189,248,0.34);
+    }
+
+    .slice.kernel {
+      background-color: rgba(250, 204, 21, 0.12);
+      border-color: rgba(250,204,21,0.38);
+    }
+
+    .slice-window {
+      position: absolute;
+      left: 48px;
+      top: 48px;
+      width: 48px;
+      height: 48px;
+      border: 2px solid rgba(250,204,21,0.94);
+      background: rgba(250,204,21,0.15);
+      box-shadow: 0 0 0 1px rgba(3,7,18,0.76), 0 0 22px rgba(250,204,21,0.16);
+    }
+
+    .depth-brace {
+      position: absolute;
+      left: 205px;
+      top: 35px;
+      width: 70px;
+      height: 178px;
+      border-right: 2px solid rgba(230,238,247,0.42);
+      border-top: 2px solid rgba(230,238,247,0.42);
+      border-bottom: 2px solid rgba(230,238,247,0.42);
+      border-radius: 0 16px 16px 0;
+    }
+
+    .depth-brace span {
+      position: absolute;
+      left: 13px;
+      top: 73px;
+      color: var(--ink);
+      font-weight: 800;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .depth-note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      margin-top: 8px;
+    }
+
+    .scalar-out {
+      min-height: 160px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      border-radius: 10px;
+      background: rgba(3,7,18,0.42);
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 16px;
+    }
+
+    .scalar-out b {
+      display: block;
+      color: var(--amber);
+      font-size: 32px;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .scalar-out span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 780px) {
+      .caption { grid-template-columns: 1fr; }
+      .math-grid { grid-template-columns: 1fr; }
+      .depth-stage { grid-template-columns: 1fr; }
+      .op { text-align: left; }
+    }
+
+    .label { fill: var(--muted); font-size: 13px; letter-spacing: 0; }
+    .title { fill: var(--ink); font-size: 17px; font-weight: 800; letter-spacing: 0; }
+    .tiny { fill: var(--muted); font-size: 11px; letter-spacing: 0; }
+    .shape-label { fill: #dce8f5; font-size: 12px; font-weight: 700; letter-spacing: 0; }
+    .note { fill: var(--muted); font-size: 12px; letter-spacing: 0; }
+    .wire { stroke: var(--line); stroke-width: 1.1; fill: none; }
+    .wire-hot { stroke: rgba(251, 191, 36, 0.58); stroke-width: 1.7; fill: none; }
+    .wire-main { stroke: rgba(56, 189, 248, 0.72); stroke-width: 2.2; fill: none; }
+    .wire-fan { stroke: rgba(163, 230, 53, 0.42); stroke-width: 1.25; fill: none; }
+    .grid-line { stroke: rgba(255,255,255,0.055); stroke-width: 1; }
+    .cell { stroke: rgba(255,255,255,0.10); stroke-width: 0.8; }
+    .filter-slice { fill: rgba(56,189,248,0.12); stroke: rgba(56,189,248,0.42); stroke-width: 1; }
+    .filter-selected { fill: rgba(250,204,21,0.18); stroke: rgba(250,204,21,0.9); stroke-width: 1.4; }
+    .map { fill: rgba(15,23,42,0.96); stroke: rgba(255,255,255,0.16); stroke-width: 1; }
+    .map-hot { stroke: rgba(250,204,21,0.92); stroke-width: 2; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Convnet Fan-Out / Fan-In</h1>
+  <p class="subtitle">
+    Channels inside a layer are parallel feature maps. Layers are sequential. Conv2 does not read the original image directly:
+    it reads a 32-channel stack from conv1/pool and applies 64 new learned 32 x 5 x 5 filters.
+  </p>
+
+  <section class="stage" aria-label="Improved CNN diagram">
+    <svg viewBox="0 0 1220 720" role="img">
+      <defs>
+        <linearGradient id="inputInk" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stop-color="#e6eef7" />
+          <stop offset="1" stop-color="#38bdf8" />
+        </linearGradient>
+        <linearGradient id="poolGrad" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stop-color="#14b8a6" />
+          <stop offset="1" stop-color="#a3e635" />
+        </linearGradient>
+        <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(230,238,247,0.58)" />
+        </marker>
+        <marker id="arrowHot" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(250,204,21,0.82)" />
+        </marker>
+      </defs>
+
+      <g opacity="0.85">
+        <line x1="60" x2="1160" y1="104" y2="104" class="grid-line" />
+        <line x1="60" x2="1160" y1="270" y2="270" class="grid-line" />
+        <line x1="60" x2="1160" y1="438" y2="438" class="grid-line" />
+        <line x1="60" x2="1160" y1="604" y2="604" class="grid-line" />
+      </g>
+
+      <text x="62" y="56" class="title">1. Fan-out: one image, 32 learned conv1 questions</text>
+      <text x="62" y="82" class="note">Each conv1 channel is a different filter response over the same input image.</text>
+
+      <g id="input-image" transform="translate(70 145)">
+        <text x="0" y="-22" class="shape-label">Input image</text>
+        <text x="0" y="-5" class="tiny">1 x 28 x 28</text>
+        <rect x="0" y="0" width="110" height="110" rx="8" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.16)" />
+        <path d="M 72 16 C 42 8, 24 28, 34 50 C 44 72, 84 62, 74 92 C 68 110, 34 102, 28 86"
+          fill="none" stroke="url(#inputInk)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+        <rect x="36" y="36" width="30" height="30" fill="rgba(250,204,21,0.13)" stroke="rgba(250,204,21,0.8)" />
+        <text x="0" y="136" class="tiny">A 5 x 5 window slides over the image.</text>
+      </g>
+
+      <g id="conv1-filters" transform="translate(255 120)">
+        <text x="0" y="3" class="shape-label">Conv1 filters</text>
+        <text x="0" y="21" class="tiny">32 filters, each 1 x 5 x 5</text>
+      </g>
+
+      <g id="conv1-maps" transform="translate(445 104)">
+        <text x="0" y="19" class="shape-label">Conv1 feature maps</text>
+        <text x="0" y="37" class="tiny">32 x 28 x 28, parallel maps</text>
+      </g>
+
+      <g id="pool-stage" transform="translate(640 104)">
+        <text x="0" y="19" class="shape-label">ReLU + max-pool</text>
+        <text x="0" y="37" class="tiny">32 x 28 x 28 -> 32 x 14 x 14</text>
+      </g>
+
+      <g id="pooled-maps" transform="translate(805 104)">
+        <text x="0" y="19" class="shape-label">Pooled stack</text>
+        <text x="0" y="37" class="tiny">still 32 channels, smaller maps</text>
+      </g>
+
+      <g id="conv2-filter" transform="translate(570 396)">
+        <text x="-6" y="-28" class="shape-label">2. Fan-in: one conv2 filter reads all 32 maps</text>
+        <text x="-6" y="-10" class="tiny">selected conv2 filter: 32 x 5 x 5 tensor</text>
+      </g>
+
+      <g id="conv2-output" transform="translate(980 286)">
+        <text x="0" y="-22" class="shape-label">Conv2 output maps</text>
+        <text x="0" y="-5" class="tiny">64 x 14 x 14</text>
+      </g>
+
+      <path d="M 182 198 C 220 170, 232 150, 252 136" class="wire-main" marker-end="url(#arrow)" />
+      <path d="M 182 198 C 220 200, 232 200, 252 200" class="wire-main" marker-end="url(#arrow)" />
+      <path d="M 182 198 C 220 230, 232 250, 252 264" class="wire-main" marker-end="url(#arrow)" />
+
+      <path d="M 392 140 C 420 142, 422 144, 440 150" class="wire" marker-end="url(#arrow)" />
+      <path d="M 392 205 C 420 205, 422 205, 440 205" class="wire" marker-end="url(#arrow)" />
+      <path d="M 392 270 C 420 268, 422 266, 440 260" class="wire" marker-end="url(#arrow)" />
+
+      <path d="M 585 158 C 608 158, 618 158, 637 158" class="wire" marker-end="url(#arrow)" />
+      <path d="M 585 205 C 608 205, 618 205, 637 205" class="wire" marker-end="url(#arrow)" />
+      <path d="M 585 252 C 608 252, 618 252, 637 252" class="wire" marker-end="url(#arrow)" />
+
+      <path d="M 735 158 C 766 158, 780 158, 802 158" class="wire" marker-end="url(#arrow)" />
+      <path d="M 735 205 C 766 205, 780 205, 802 205" class="wire" marker-end="url(#arrow)" />
+      <path d="M 735 252 C 766 252, 780 252, 802 252" class="wire" marker-end="url(#arrow)" />
+
+      <path d="M 900 154 C 936 214, 944 328, 978 368" class="wire-hot" marker-end="url(#arrowHot)" />
+      <path d="M 900 205 C 936 246, 944 342, 978 384" class="wire-hot" marker-end="url(#arrowHot)" />
+      <path d="M 900 256 C 936 284, 944 360, 978 400" class="wire-hot" marker-end="url(#arrowHot)" />
+      <path d="M 760 474 C 842 446, 910 426, 976 390" class="wire-main" marker-end="url(#arrow)" />
+
+      <g id="conv2-fanout" transform="translate(980 430)">
+        <text x="0" y="96" class="tiny">The same 32-map input stack feeds 64 independent conv2 filters.</text>
+      </g>
+    </svg>
+
+    <div class="caption">
+      <div>
+        <b>Conv1 fan-out</b>
+        The input image is not copied through channels. It is tested by 32 different learned filters, producing 32 parallel maps.
+      </div>
+      <div>
+        <b>Pooling</b>
+        Pooling shrinks each map spatially. It keeps 32 channels; it does not merge the maps into one.
+      </div>
+      <div>
+        <b>Conv2 fan-in</b>
+        One conv2 filter is a 32 x 5 x 5 tensor. It reads a 5 x 5 patch from every pooled conv1 map.
+      </div>
+      <div>
+        <b>Conv2 fan-out</b>
+        There are 64 independent conv2 filters, so the result is 64 new feature maps.
+      </div>
+    </div>
+  </section>
+
+  <div class="controls">
+    <label for="filterSlider">Selected conv2 filter</label>
+    <input id="filterSlider" type="range" min="0" max="63" value="17" />
+    <span class="readout" id="filterReadout">filter 17 / 63</span>
+  </div>
+
+  <section class="numeric" aria-label="Numerical convolution example">
+    <h2>One conv1 number, numerically</h2>
+    <p>
+      A single conv1 filter has shape <b>1 x 5 x 5</b>. At one location, it multiplies a 5 x 5 input patch by its 5 x 5 learned weights,
+      sums the 25 products, adds one bias, then ReLU clips negative values to zero.
+    </p>
+    <div class="math-grid">
+      <div>
+        <div class="tiny" style="margin-bottom:6px;">input patch</div>
+        <div class="matrix" id="inputMatrix"></div>
+      </div>
+      <div class="op">x</div>
+      <div>
+        <div class="tiny" style="margin-bottom:6px;">filter weights</div>
+        <div class="matrix" id="weightMatrix"></div>
+      </div>
+      <div class="op">=</div>
+      <div>
+        <div class="tiny" style="margin-bottom:6px;">products</div>
+        <div class="matrix" id="productMatrix"></div>
+      </div>
+      <div class="op"></div>
+      <div class="op">sum</div>
+      <div class="op">+</div>
+      <div class="op">bias</div>
+      <div class="result-box" id="numericResult"></div>
+    </div>
+  </section>
+
+  <section class="depth-panel" aria-label="Conv2 full depth patch">
+    <h2>Conv2 uses a full-depth patch</h2>
+    <p>
+      At one output location, a conv2 filter does not choose 5 of the 32 channels. It takes a <b>5 x 5 window from every one of the 32 pooled maps</b>,
+      then dots that <b>32 x 5 x 5</b> input block with one learned <b>32 x 5 x 5</b> filter tensor.
+    </p>
+    <div class="depth-stage">
+      <div class="stack-card">
+        <div class="stack-title">Pooled conv1 stack <span>32 x 14 x 14</span></div>
+        <div class="depth-stack" id="inputDepthStack">
+          <div class="depth-brace"><span>32 maps deep</span></div>
+        </div>
+        <div class="depth-note">Yellow squares mark the same 5 x 5 spatial window across all 32 channels.</div>
+      </div>
+      <div class="op">dot</div>
+      <div class="stack-card">
+        <div class="stack-title">One conv2 filter <span>32 x 5 x 5</span></div>
+        <div class="depth-stack" id="kernelDepthStack">
+          <div class="depth-brace"><span>32 weight slices</span></div>
+        </div>
+        <div class="depth-note">Each output filter has one 5 x 5 weight slice for each input channel.</div>
+      </div>
+      <div class="op">=</div>
+      <div class="scalar-out">
+        <div>
+          <b>1 value</b>
+          <span>one scalar in one conv2 output map at location (y, x)</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+  const svg = document.querySelector('svg');
+  const filterGroup = document.querySelector('#conv1-filters');
+  const conv1Maps = document.querySelector('#conv1-maps');
+  const poolStage = document.querySelector('#pool-stage');
+  const pooledMaps = document.querySelector('#pooled-maps');
+  const conv2Filter = document.querySelector('#conv2-filter');
+  const conv2Output = document.querySelector('#conv2-output');
+  const conv2Fanout = document.querySelector('#conv2-fanout');
+  const slider = document.querySelector('#filterSlider');
+  const readout = document.querySelector('#filterReadout');
+  const inputMatrix = document.querySelector('#inputMatrix');
+  const weightMatrix = document.querySelector('#weightMatrix');
+  const productMatrix = document.querySelector('#productMatrix');
+  const numericResult = document.querySelector('#numericResult');
+  const inputDepthStack = document.querySelector('#inputDepthStack');
+  const kernelDepthStack = document.querySelector('#kernelDepthStack');
+
+  function svgEl(name, attrs = {}, parent = svg) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', name);
+    for (const [key, value] of Object.entries(attrs)) el.setAttribute(key, value);
+    parent.appendChild(el);
+    return el;
+  }
+
+  function drawMiniGrid(parent, x, y, size, cells, fill, hot = false) {
+    const group = svgEl('g', { transform: `translate(${x} ${y})` }, parent);
+    svgEl('rect', { x: 0, y: 0, width: size, height: size, rx: 6, class: hot ? 'map map-hot' : 'map' }, group);
+    const step = size / cells;
+    for (let row = 0; row < cells; row++) {
+      for (let col = 0; col < cells; col++) {
+        const v = Math.sin((row + 1) * 1.7 + (col + 1) * 2.3 + x * 0.017 + y * 0.011);
+        svgEl('rect', {
+          x: col * step + 1,
+          y: row * step + 1,
+          width: Math.max(1, step - 2),
+          height: Math.max(1, step - 2),
+          rx: 1,
+          fill: fill(v),
+          class: 'cell'
+        }, group);
+      }
+    }
+    return group;
+  }
+
+  function colorMix(a, b, t) {
+    const ah = parseInt(a.slice(1), 16);
+    const bh = parseInt(b.slice(1), 16);
+    const ar = ah >> 16, ag = (ah >> 8) & 255, ab = ah & 255;
+    const br = bh >> 16, bg = (bh >> 8) & 255, bb = bh & 255;
+    const r = Math.round(ar + (br - ar) * t);
+    const g = Math.round(ag + (bg - ag) * t);
+    const bl = Math.round(ab + (bb - ab) * t);
+    return `rgb(${r},${g},${bl})`;
+  }
+
+  function activationColor(v) {
+    return colorMix('#111827', '#38bdf8', Math.max(0.12, Math.min(0.94, (v + 1) / 2)));
+  }
+
+  function pooledColor(v) {
+    return colorMix('#101827', '#a3e635', Math.max(0.10, Math.min(0.92, (v + 1) / 2)));
+  }
+
+  function weightColor(v) {
+    return v > 0
+      ? colorMix('#121826', '#facc15', Math.min(0.95, v))
+      : colorMix('#121826', '#fb7185', Math.min(0.84, Math.abs(v)));
+  }
+
+  function drawFilters() {
+    [0, 1, 2].forEach((i) => {
+      const x = 0;
+      const y = 36 + i * 64;
+      const g = svgEl('g', { transform: `translate(${x} ${y})` }, filterGroup);
+      svgEl('rect', { x: 0, y: 0, width: 122, height: 44, rx: 7, fill: 'rgba(255,255,255,0.045)', stroke: 'rgba(255,255,255,0.12)' }, g);
+      for (let row = 0; row < 5; row++) {
+        for (let col = 0; col < 5; col++) {
+          const v = Math.sin(i * 2.4 + row * 1.8 + col * 2.2);
+          svgEl('rect', {
+            x: 12 + col * 6,
+            y: 7 + row * 6,
+            width: 5,
+            height: 5,
+            fill: weightColor(v)
+          }, g);
+        }
+      }
+      svgEl('text', { x: 52, y: 20, class: 'shape-label' }, g).textContent = `filter ${i}`;
+      svgEl('text', { x: 52, y: 35, class: 'tiny' }, g).textContent = '1 x 5 x 5';
+    });
+    svgEl('text', { x: 4, y: 230, class: 'tiny' }, filterGroup).textContent = '... 29 more filters';
+  }
+
+  function drawConv1Maps() {
+    [0, 1, 2].forEach((i) => {
+      drawMiniGrid(conv1Maps, 0, 58 + i * 47, 39, 7, activationColor, i === 1);
+      svgEl('text', { x: 48, y: 82 + i * 47, class: 'tiny' }, conv1Maps).textContent = `channel ${i}`;
+    });
+    svgEl('text', { x: 0, y: 232, class: 'tiny' }, conv1Maps).textContent = '... 29 more maps';
+  }
+
+  function drawPooling() {
+    [0, 1, 2].forEach((i) => {
+      const y = 59 + i * 47;
+      svgEl('rect', { x: 0, y, width: 96, height: 32, rx: 8, fill: 'rgba(20,184,166,0.10)', stroke: 'rgba(20,184,166,0.38)' }, poolStage);
+      svgEl('text', { x: 12, y: y + 20, class: 'tiny' }, poolStage).textContent = `pool channel ${i}`;
+    });
+    svgEl('text', { x: 0, y: 232, class: 'tiny' }, poolStage).textContent = 'same channel count';
+  }
+
+  function drawPooledMaps() {
+    [0, 1, 2].forEach((i) => {
+      drawMiniGrid(pooledMaps, 0, 61 + i * 47, 33, 4, pooledColor, i === 1);
+      svgEl('text', { x: 44, y: 82 + i * 47, class: 'tiny' }, pooledMaps).textContent = `pooled ${i}`;
+    });
+    svgEl('text', { x: 0, y: 232, class: 'tiny' }, pooledMaps).textContent = '... still 32 maps';
+  }
+
+  function drawConv2Filter(index = 17) {
+    conv2Filter.querySelectorAll('.dynamic').forEach((node) => node.remove());
+    const layer = svgEl('g', { class: 'dynamic' }, conv2Filter);
+    const cols = 8;
+    const cell = 24;
+    for (let i = 0; i < 32; i++) {
+      const x = (i % cols) * cell;
+      const y = Math.floor(i / cols) * cell + 22;
+      const selected = i === (index % 32);
+      svgEl('rect', {
+        x,
+        y,
+        width: 18,
+        height: 18,
+        rx: 4,
+        class: selected ? 'filter-selected' : 'filter-slice'
+      }, layer);
+      svgEl('text', { x: x + 5, y: y + 13, class: 'tiny', fill: selected ? '#facc15' : '#91a4b8' }, layer).textContent = i;
+    }
+    svgEl('text', { x: 0, y: 148, class: 'note' }, layer).textContent =
+      `filter ${index} has one 5 x 5 slice for each of the 32 pooled maps`;
+  }
+
+  function drawConv2Output(index = 17) {
+    conv2Output.querySelectorAll('.dynamic').forEach((node) => node.remove());
+    const layer = svgEl('g', { class: 'dynamic' }, conv2Output);
+    drawMiniGrid(layer, 0, 18, 72, 7, activationColor, true);
+    svgEl('text', { x: 86, y: 52, class: 'shape-label' }, layer).textContent = `output channel ${index}`;
+    svgEl('text', { x: 86, y: 71, class: 'tiny' }, layer).textContent = 'one of 64 new maps';
+    for (let i = 0; i < 5; i++) {
+      const x = 0 + i * 16;
+      const y = 138 + i * 10;
+      svgEl('rect', { x, y, width: 54, height: 54, rx: 8, fill: 'rgba(15,23,42,0.42)', stroke: 'rgba(255,255,255,0.10)' }, layer);
+    }
+    svgEl('text', { x: 92, y: 176, class: 'tiny' }, layer).textContent = `... 63 other output maps`;
+  }
+
+  function drawConv2Fanout(index = 17) {
+    conv2Fanout.querySelectorAll('.dynamic').forEach((node) => node.remove());
+    const layer = svgEl('g', { class: 'dynamic' }, conv2Fanout);
+    for (let i = 0; i < 6; i++) {
+      const hot = i === index % 6;
+      svgEl('rect', {
+        x: i * 28,
+        y: 0,
+        width: 22,
+        height: 40,
+        rx: 6,
+        fill: hot ? 'rgba(250,204,21,0.18)' : 'rgba(255,255,255,0.055)',
+        stroke: hot ? 'rgba(250,204,21,0.82)' : 'rgba(255,255,255,0.14)'
+      }, layer);
+    }
+  }
+
+  function updateFilter() {
+    const value = Number(slider.value);
+    readout.textContent = `filter ${value} / 63`;
+    drawConv2Filter(value);
+    drawConv2Output(value);
+    drawConv2Fanout(value);
+  }
+
+  drawFilters();
+  drawConv1Maps();
+  drawPooling();
+  drawPooledMaps();
+  drawNumericalExample();
+  drawFullDepthPatch();
+  updateFilter();
+  slider.addEventListener('input', updateFilter);
+
+  function drawNumericalExample() {
+    const patch = [
+      0.00, 0.00, 0.10, 0.15, 0.00,
+      0.00, 0.25, 0.80, 0.70, 0.10,
+      0.05, 0.65, 1.00, 0.75, 0.12,
+      0.00, 0.35, 0.85, 0.60, 0.08,
+      0.00, 0.00, 0.20, 0.18, 0.00
+    ];
+    const weights = [
+      -0.10, -0.05, 0.10, 0.18, 0.05,
+      -0.18, 0.05, 0.22, 0.35, 0.08,
+      -0.22, 0.00, 0.28, 0.42, 0.12,
+      -0.16, 0.04, 0.20, 0.30, 0.10,
+      -0.08, -0.02, 0.08, 0.16, 0.04
+    ];
+    const bias = -0.12;
+    const products = patch.map((v, i) => v * weights[i]);
+    const sum = products.reduce((acc, v) => acc + v, 0);
+    const preRelu = sum + bias;
+    const relu = Math.max(0, preRelu);
+
+    fillMatrix(inputMatrix, patch, (v) => 'hot', (v) => v.toFixed(2));
+    fillMatrix(weightMatrix, weights, (v) => v >= 0 ? 'weight-pos' : 'weight-neg', (v) => v.toFixed(2));
+    fillMatrix(productMatrix, products, () => 'product', (v) => v.toFixed(3));
+    numericResult.innerHTML = `
+      products sum = <b>${sum.toFixed(3)}</b><br>
+      bias = <b>${bias.toFixed(3)}</b><br>
+      pre-ReLU = <b>${preRelu.toFixed(3)}</b><br>
+      ReLU output = max(0, ${preRelu.toFixed(3)}) = <b>${relu.toFixed(3)}</b><br>
+      This fills one cell in one conv1 feature map.
+    `;
+  }
+
+  function fillMatrix(parent, values, className, format) {
+    parent.innerHTML = '';
+    values.forEach((value) => {
+      const cell = document.createElement('div');
+      cell.className = `cell-num ${className(value)}`;
+      cell.textContent = format(value);
+      parent.appendChild(cell);
+    });
+  }
+
+  function drawFullDepthPatch() {
+    drawDepthStack(inputDepthStack, 'input');
+    drawDepthStack(kernelDepthStack, 'kernel');
+  }
+
+  function drawDepthStack(parent, kind) {
+    const existing = parent.querySelectorAll('.slice');
+    existing.forEach((node) => node.remove());
+    for (let i = 31; i >= 0; i--) {
+      const slice = document.createElement('div');
+      slice.className = `slice ${kind}`;
+      slice.style.left = `${i * 3.2}px`;
+      slice.style.top = `${i * 2.15}px`;
+      slice.style.opacity = `${0.34 + (31 - i) * 0.014}`;
+      slice.style.zIndex = String(31 - i);
+      if (i === 0 || i === 8 || i === 16 || i === 24 || i === 31) {
+        const window = document.createElement('div');
+        window.className = 'slice-window';
+        slice.appendChild(window);
+      }
+      if (i === 0 || i === 31) {
+        const label = document.createElement('div');
+        label.style.position = 'absolute';
+        label.style.right = '6px';
+        label.style.top = '5px';
+        label.style.color = 'rgba(230,238,247,0.72)';
+        label.style.fontSize = '10px';
+        label.style.fontWeight = '700';
+        label.textContent = kind === 'input' ? `ch ${i}` : `w ${i}`;
+        slice.appendChild(label);
+      }
+      parent.prepend(slice);
+    }
+  }
+</script>
+</body>
+</html>

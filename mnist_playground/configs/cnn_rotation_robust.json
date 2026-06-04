@@ -1,0 +1,15 @@
+{
+  "id": "cnn_rotation_robust",
+  "name": "CNN Rotation Robust (1s)",
+  "architecture": "cnn",
+  "artifactDir": "cnn_rotation_robust",
+  "channels": [32, 64],
+  "epochs": 5,
+  "augment": true,
+  "targetedPerturbation": {
+    "labels": [1],
+    "probability": 0.45,
+    "rotateDegrees": [150, 210]
+  },
+  "minimumAccuracy": 0.975
+}

@@ -10,7 +10,11 @@
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"test": "playwright test"
+		"test": "playwright test",
+		"test:fuzz": "env RUN_FUZZ=1 playwright test tests/fuzz.spec.ts",
+		"test:screenshots": "env RUN_SCREENSHOTS=1 playwright test tests/screenshots.spec.ts",
+		"validate:models": "if [ -x .venv/bin/python ]; then .venv/bin/python -m mnist_playground validate static/models; else python3 -m mnist_playground validate static/models; fi",
+		"smoke:models": "if [ -x .venv/bin/python ]; then PY=.venv/bin/python; else PY=python3; fi; $PY -m mnist_playground smoke static/models/cnn_small && $PY -m mnist_playground smoke static/models/cnn_good && $PY -m mnist_playground smoke static/models/cnn_freedraw_robust"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.60.0",
@@ -25,7 +29,6 @@
 	},
 	"dependencies": {
 		"d3": "^7.9.0",
-		"onnxruntime-web": "^1.26.0",
-		"three": "^0.184.0"
+		"onnxruntime-web": "^1.26.0"
 	}
 }

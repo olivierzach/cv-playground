@@ -1,0 +1,7 @@
+{
+  "id": "mlp_baseline",
+  "architecture": "mlp",
+  "hidden": 256,
+  "epochs": 3,
+  "minimumAccuracy": 0.94
+}

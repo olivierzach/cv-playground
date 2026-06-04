@@ -1,14 +1,15 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import { appPath } from '$lib/paths';
 </script>
 
 <div class="container">
   <div class="topbar">
     <div class="title">MNIST Playground</div>
     <nav class="nav">
-      <a class:active={$page.url.pathname === '/'} href="/">Home</a>
-      <a class:active={$page.url.pathname.startsWith('/explore')} href="/explore">Explore</a>
-      <a class:active={$page.url.pathname.startsWith('/play')} href="/play">Play</a>
+      <a class:active={$page.url.pathname === appPath('/')} href={appPath('/')}>Home</a>
+      <a class:active={$page.url.pathname.startsWith(appPath('/explore'))} href={appPath('/explore')}>Explore</a>
+      <a class:active={$page.url.pathname.startsWith(appPath('/play'))} href={appPath('/play')}>Play</a>
     </nav>
   </div>
 
@@ -19,8 +20,8 @@
       Models run in-browser (ONNX Runtime in a Web Worker). Deep exploration uses precomputed assets (metrics, confusion, feature maps, 3D embeddings).
     </p>
     <div style="margin-top: 10px" class="row">
-      <a href="/explore"><button class="primary">Explore</button></a>
-      <a href="/play"><button>Play</button></a>
+      <a href={appPath('/explore')}><button class="primary">Explore</button></a>
+      <a href={appPath('/play')}><button>Play</button></a>
     </div>
   </div>
 </div>

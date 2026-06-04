@@ -1,40 +1,82 @@
-# MNIST Playground (static)
+# MNIST Playground
 
-A GitHub Pages–friendly MNIST interactive playground.
+Static SvelteKit MNIST lab for GitHub Pages. Models run in-browser through ONNX Runtime Web; metrics, samples, embeddings, and feature-map indexes are committed as static artifacts under `static/models`.
 
-## Goals
-- **Snappy play**: draw a digit → classify instantly (ONNX Runtime Web in a **Web Worker**).
-- **Deep explore** (static assets): confusion matrix, loss curves, feature-map “layer lens” (conv + pool), and **3D embedding** (UMAP) — all loaded as precomputed artifacts so the site stays static.
-- **Extensible models**: add a new model by exporting ONNX + running a local packaging script that emits a folder of assets and an entry in `static/models/manifest.json`.
+## App
 
-## Dev
+- `/play`: draw or load a packaged sample, inspect preprocessing, prediction probabilities/logits, learned convolution traces, feature heatmaps, and linked 3D embedding/logit clouds.
+- `/explore`: inspect model metrics, confusion matrix filtering, sample gallery, selected-sample probabilities, 3D embeddings, and feature map previews.
+
+## Local Development
+
 ```bash
-cd mnist-playground
 npm install
 npm run dev
 ```
 
-## Build (static)
+## Static Build
+
 ```bash
+npm run check
 npm run build
 ```
 
-## Deploy to GitHub Pages
-Use adapter-static output and configure `paths.base` if your repo is served under a subpath.
+For GitHub Pages under a repository subpath:
 
-In SvelteKit, set base path in `svelte.config.js` / `src/app.html` depending on your deployment strategy.
+```bash
+BASE_PATH=/mnist-playground npm run build
+```
 
-A common approach:
-- set `kit.paths.base` to `process.env.BASE_PATH ?? ''`
-- in GitHub Actions, build with `BASE_PATH=/<repo>`
+## Model Artifacts
 
-## Model assets
-See `static/models/manifest.json`.
+Each production model manifest entry points at:
 
-Placeholder assets live in `static/models/lenet_placeholder/`.
+- `model.onnx`
+- `metrics.json`
+- `samples/samples.json`
+- `samples/samples.png`
+- `embeddings/umap3d.json`
+- `featuremaps/index.json`
+- `model-card.md`
 
-## Next build steps (planned)
-- Explore tab: sample gallery (sprite-sheet) + linked confusion-cell → examples
-- Layer lens: activation summaries + channel tiles (from precomputed featuremap atlases)
-- 3D embeddings: three.js point cloud + click-to-select sample
-- Packaging tool (`tools/package_model.py`) to export ONNX + metrics + embeddings + featuremaps
+Validate the artifact contract:
+
+```bash
+python3 -m mnist_playground validate static/models
+```
+
+Run ONNX Runtime smoke inference for a packaged model:
+
+```bash
+python3 -m mnist_playground smoke static/models/cnn_small
+```
+
+If your global `python3` does not have `onnxruntime`, use the project venv or install `numpy onnx onnxruntime`.
+
+## Model Factory
+
+Shipped configs:
+
+```bash
+python3 -m mnist_playground configs --json
+```
+
+Train/package through the local pipeline:
+
+```bash
+python3 -m mnist_playground train --config cnn_fast --out static/models
+```
+
+Configs currently include `mlp_baseline`, `cnn_fast`, `cnn_strong`, `cnn_rotation_robust`, and `cnn_freedraw_robust`. The default production manifest model is `cnn_fast`; the strongest free-draw model is `CNN Free Draw Robust`.
+
+`cnn_freedraw_robust` trains with ordinary MNIST plus targeted perturbations for free-draw failure cases: moderate rotations across all digits, mirrored/backwards `3` and `7`, and upside-down-ish `1`.
+
+## Validation Proof
+
+```bash
+npm test
+npm run test:fuzz
+npm run test:screenshots
+```
+
+Screenshot proof is written to `artifacts/screenshots/` and ignored by git. CI uploads screenshots, Playwright traces/reports, and `artifacts/validation-summary.md`.

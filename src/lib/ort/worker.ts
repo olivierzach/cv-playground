@@ -33,18 +33,23 @@ let session: ort.InferenceSession | null = null;
 let inputName = 'input';
 let outputName = 'logits';
 
-function softmax(logits: Float32Array): Float32Array {
-  let max = -Infinity;
-  for (let i = 0; i < logits.length; i++) max = Math.max(max, logits[i]);
-  let sum = 0;
-  const exps = new Float32Array(logits.length);
-  for (let i = 0; i < logits.length; i++) {
-    const v = Math.exp(logits[i] - max);
-    exps[i] = v;
-    sum += v;
+function softmaxRows(logits: Float32Array, classes = 10): Float32Array {
+  if (logits.length % classes !== 0) {
+    throw new Error(`Expected logits length to be divisible by ${classes}, got ${logits.length}`);
   }
-  for (let i = 0; i < exps.length; i++) exps[i] /= sum;
-  return exps;
+  const probs = new Float32Array(logits.length);
+  for (let row = 0; row < logits.length; row += classes) {
+    let max = -Infinity;
+    for (let i = 0; i < classes; i++) max = Math.max(max, logits[row + i]);
+    let sum = 0;
+    for (let i = 0; i < classes; i++) {
+      const v = Math.exp(logits[row + i] - max);
+      probs[row + i] = v;
+      sum += v;
+    }
+    for (let i = 0; i < classes; i++) probs[row + i] /= sum;
+  }
+  return probs;
 }
 
 self.onmessage = async (ev: MessageEvent<Msg>) => {
@@ -85,9 +90,9 @@ self.onmessage = async (ev: MessageEvent<Msg>) => {
       const out = results[outputName];
       if (!out) throw new Error(`Missing output '${outputName}'. Got keys: ${Object.keys(results).join(', ')}`);
 
-      // MNIST logits expected shape [1,10]
+      // MNIST logits expected shape [N,10].
       const logits = out.data as Float32Array;
-      const probs = softmax(logits);
+      const probs = softmaxRows(logits);
 
       const resp: PredictResp = { type: 'pred', id: msg.id, logits, probs };
       self.postMessage(resp, { transfer: [resp.logits.buffer, resp.probs.buffer] });

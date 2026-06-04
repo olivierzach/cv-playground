@@ -1,0 +1,38 @@
+{
+  "id": "cnn_freedraw_robust",
+  "name": "CNN Free Draw Robust",
+  "architecture": "cnn",
+  "artifactDir": "cnn_freedraw_robust",
+  "channels": [32, 64],
+  "epochs": 6,
+  "augment": true,
+  "targetedPerturbation": {
+    "rules": [
+      {
+        "labels": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        "probability": 0.35,
+        "rotateDegrees": [-24, 24],
+        "translate": [0.05, 0.05],
+        "scale": [0.9, 1.12],
+        "shear": [-6, 6]
+      },
+      {
+        "labels": [3, 7],
+        "probability": 0.5,
+        "horizontalFlip": true,
+        "rotateDegrees": [-10, 10],
+        "translate": [0.06, 0.06],
+        "scale": [0.92, 1.08],
+        "shear": [-8, 8]
+      },
+      {
+        "labels": [1],
+        "probability": 0.35,
+        "rotateDegrees": [150, 210],
+        "translate": [0.04, 0.04],
+        "scale": [0.95, 1.08]
+      }
+    ]
+  },
+  "minimumAccuracy": 0.975
+}
