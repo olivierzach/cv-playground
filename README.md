@@ -24,7 +24,7 @@ npm run build
 For GitHub Pages under a repository subpath:
 
 ```bash
-BASE_PATH=/mnist-playground npm run build
+BASE_PATH=/cv-playground npm run build
 ```
 
 ## Model Artifacts
