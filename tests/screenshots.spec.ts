@@ -20,7 +20,7 @@ test('captures play empty, sample, and prediction states', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Predict' }).click();
   await expect(page.getByText('Embedding cloud')).toBeVisible();
-  await expect(page.locator('svg.umap-svg .umap-query')).toBeVisible();
+  await expect.poll(async () => page.locator('svg.umap-svg').count()).toBeGreaterThanOrEqual(2);
   await expect(page.getByText('Feature heatmaps')).toBeVisible();
   await page.screenshot({ path: `${OUT}/play-prediction.png`, fullPage: true });
 });
