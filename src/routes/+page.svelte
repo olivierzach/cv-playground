@@ -5,7 +5,7 @@
 
 <div class="container">
   <div class="topbar">
-    <div class="title">MNIST Playground</div>
+    <div class="title">Computer Vision Playground</div>
     <nav class="nav">
       <a class:active={$page.url.pathname === appPath('/')} href={appPath('/')}>Home</a>
       <a class:active={$page.url.pathname.startsWith(appPath('/explore'))} href={appPath('/explore')}>Explore</a>

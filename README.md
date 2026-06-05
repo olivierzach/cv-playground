@@ -1,4 +1,4 @@
-# MNIST Playground
+# Computer Vision Playground
 
 Static SvelteKit MNIST lab for GitHub Pages. Models run in-browser through ONNX Runtime Web; metrics, samples, embeddings, and feature-map indexes are committed as static artifacts under `static/models`.
 

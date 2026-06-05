@@ -4,7 +4,7 @@
 </script>
 
 <svelte:head>
-  <title>MNIST Playground</title>
+  <title>Computer Vision Playground</title>
 </svelte:head>
 
 {@render children()}

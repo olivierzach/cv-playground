@@ -236,7 +236,7 @@
 
 <div class="container">
   <div class="topbar">
-    <div class="title">MNIST Playground</div>
+    <div class="title">Computer Vision Playground</div>
     <nav class="nav">
       <a href={appPath('/')}>Home</a>
       <a class="active" href={appPath('/explore')}>Explore</a>
